@@ -1,6 +1,6 @@
 import requests
 
-URL = "https://www.nseindia.com/api/corporates-financial-results?index=equities"
+URL = "https://www.nseindia.com/api/corporate-announcements?index=equities"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -19,8 +19,10 @@ def get_result_stocks():
         stocks = []
         
         for item in data.get("data", []):
+            subject = item.get("subject", "").lower()
             symbol = item.get("symbol")
-            if symbol:
+            
+            if "financial results" in subject and symbol:
                 stocks.append(symbol + ".NS")
         
         return list(set(stocks))
