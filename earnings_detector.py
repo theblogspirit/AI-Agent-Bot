@@ -1,31 +1,33 @@
 import requests
 from bs4 import BeautifulSoup
 
-SCREENER_URL = "https://www.screener.in/screens/1776430/quarterly-results/"
+URL = "https://www.screener.in/company/"
 
 def get_result_stocks():
     headers = {
         "User-Agent": "Mozilla/5.0"
     }
     
-    r = requests.get(SCREENER_URL, headers=headers, timeout=20)
-    soup = BeautifulSoup(r.text, "lxml")
+    try:
+        r = requests.get(URL, headers=headers, timeout=20)
+        soup = BeautifulSoup(r.text, "lxml")
+        
+        # Find "Recently announced results"
+        section = soup.find("section", {"id": "recently-announced-results"})
+        if not section:
+            return []
+        
+        stocks = []
+        
+        for a in section.find_all("a"):
+            name = a.text.strip()
+            if not name:
+                continue
+            
+            symbol = name.upper().replace(" ", "") + ".NS"
+            stocks.append(symbol)
+        
+        return stocks
     
-    table = soup.find("table")
-    if not table:
+    except:
         return []
-    
-    stocks = []
-    
-    for row in table.find_all("tr")[1:]:
-        cols = row.find_all("td")
-        if not cols:
-            continue
-        
-        name = cols[0].text.strip()
-        
-        # Convert Screener name → Yahoo symbol guess
-        symbol = name.upper().replace(" ", "") + ".NS"
-        stocks.append(symbol)
-    
-    return stocks
