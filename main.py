@@ -15,7 +15,7 @@ def run_bot():
             signals.append(result)
     
     if not signals:
-        send_telegram("No bullish stocks found today.")
+        send_telegram(f"Scan complete: {len(stocks)} stocks checked. No bullish stocks today.")
         return
     
     for sig in signals:
