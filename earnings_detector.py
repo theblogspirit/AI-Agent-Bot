@@ -1,33 +1,30 @@
 import requests
-from bs4 import BeautifulSoup
 
-URL = "https://www.screener.in/company/"
+URL = "https://www.nseindia.com/api/corporates-financial-results"
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://www.nseindia.com/"
+}
 
 def get_result_stocks():
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-    
     try:
-        r = requests.get(URL, headers=headers, timeout=20)
-        soup = BeautifulSoup(r.text, "lxml")
+        session = requests.Session()
+        session.get("https://www.nseindia.com", headers=HEADERS, timeout=10)
         
-        # Find "Recently announced results"
-        section = soup.find("section", {"id": "recently-announced-results"})
-        if not section:
-            return []
+        r = session.get(URL, headers=HEADERS, timeout=10)
+        data = r.json()
         
         stocks = []
         
-        for a in section.find_all("a"):
-            name = a.text.strip()
-            if not name:
-                continue
-            
-            symbol = name.upper().replace(" ", "") + ".NS"
-            stocks.append(symbol)
+        for item in data.get("data", []):
+            symbol = item.get("symbol")
+            if symbol:
+                stocks.append(symbol + ".NS")
         
-        return stocks
+        return list(set(stocks))
     
     except:
         return []
