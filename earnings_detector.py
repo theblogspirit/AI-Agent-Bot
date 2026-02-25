@@ -8,6 +8,14 @@ HEADERS = {
     "Referer": "https://www.nseindia.com/"
 }
 
+RESULT_KEYWORDS = [
+    "financial results",
+    "quarterly results",
+    "audited results",
+    "unaudited results",
+    "results"
+]
+
 def get_result_stocks():
     try:
         session = requests.Session()
@@ -18,14 +26,15 @@ def get_result_stocks():
         
         stocks = []
         
-        for item in data.get("data", []):
-            subject = item.get("subject", "").lower()
+        for item in data:
+            desc = str(item.get("desc", "")).lower()
             symbol = item.get("symbol")
             
-            if "financial results" in subject and symbol:
+            if any(k in desc for k in RESULT_KEYWORDS) and symbol:
                 stocks.append(symbol + ".NS")
         
         return list(set(stocks))
     
-    except:
+    except Exception as e:
+        print("Detector error:", e)
         return []
