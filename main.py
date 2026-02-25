@@ -1,12 +1,14 @@
 from telegram_utils import send_telegram
 from technical_scan import check_stock
-
-def load_stocks():
-    with open("stocks.txt") as f:
-        return [line.strip() for line in f if line.strip()]
+from earnings_detector import get_result_stocks
 
 def run_bot():
-    stocks = load_stocks()
+    stocks = get_result_stocks()
+    
+    if not stocks:
+        send_telegram("No result stocks detected today.")
+        return
+    
     signals = []
     
     for s in stocks:
@@ -15,12 +17,12 @@ def run_bot():
             signals.append(result)
     
     if not signals:
-        send_telegram(f"Scan complete: {len(stocks)} stocks checked. No bullish stocks today.")
+        send_telegram(f"Earnings scan: {len(stocks)} result stocks checked. No bullish setups.")
         return
     
     for sig in signals:
         msg = f"""
-📈 Bullish Stock Detected
+📊 Earnings + Bullish Stock
 
 {sig['symbol']}
 
