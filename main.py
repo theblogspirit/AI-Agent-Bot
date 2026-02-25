@@ -11,36 +11,48 @@ def run_bot():
         return
     
     strong_results = []
+    surprise_results = []
     
     for s in stocks:
         e = check_earnings_strength(s)
-        if e and e["strong"]:
+        if not e:
+            continue
+        
+        if e["surprise"]:
+            surprise_results.append(e)
+        elif e["strong"]:
             strong_results.append(e)
     
-    if not strong_results:
+    # Prefer surprise stocks
+    candidates = surprise_results if surprise_results else strong_results
+    
+    if not candidates:
         send_telegram(f"Earnings scan: {len(stocks)} results checked. No strong earnings.")
         return
     
     signals = []
     
-    for e in strong_results:
+    for e in candidates:
         t = check_stock(e["symbol"])
         if t:
             signals.append((e, t))
     
     if not signals:
-        send_telegram(f"{len(strong_results)} strong earnings stocks, but no bullish charts.")
+        send_telegram(f"{len(candidates)} strong/surprise earnings stocks, but no bullish charts.")
         return
     
     for e, t in signals:
+        level = "🔥 Earnings Surprise" if e["surprise"] else "Strong Earnings"
+        
         msg = f"""
-🚀 Strong Earnings + Bullish Trend
+🚀 {level} + Bullish Trend
 
 {e['symbol']}
 
 Revenue Growth: {e['revenue_growth']:.1%}
 Profit Growth: {e['profit_growth']:.1%}
 Margin: {e['margin']:.1%}
+ROE: {e['roe']:.1%}
 
 Price: ₹{t['price']}
 Entry: ₹{t['entry']}
