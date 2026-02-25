@@ -2,3 +2,5 @@ requests
 yfinance
 pandas
 pandas-ta-openbb
+beautifulsoup4
+lxml
