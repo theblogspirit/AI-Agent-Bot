@@ -1,6 +1,7 @@
 from telegram_utils import send_telegram
 from technical_scan import check_stock
 from earnings_detector import get_result_stocks
+from earnings_analysis import check_earnings_strength
 
 def run_bot():
     stocks = get_result_stocks()
@@ -9,27 +10,42 @@ def run_bot():
         send_telegram("No result stocks detected today.")
         return
     
-    signals = []
+    strong_results = []
     
     for s in stocks:
-        result = check_stock(s)
-        if result:
-            signals.append(result)
+        e = check_earnings_strength(s)
+        if e and e["strong"]:
+            strong_results.append(e)
     
-    if not signals:
-        send_telegram(f"Earnings scan: {len(stocks)} result stocks checked. No bullish setups.")
+    if not strong_results:
+        send_telegram(f"Earnings scan: {len(stocks)} results checked. No strong earnings.")
         return
     
-    for sig in signals:
+    signals = []
+    
+    for e in strong_results:
+        t = check_stock(e["symbol"])
+        if t:
+            signals.append((e, t))
+    
+    if not signals:
+        send_telegram(f"{len(strong_results)} strong earnings stocks, but no bullish charts.")
+        return
+    
+    for e, t in signals:
         msg = f"""
-📊 Earnings + Bullish Stock
+🚀 Strong Earnings + Bullish Trend
 
-{sig['symbol']}
+{e['symbol']}
 
-Price: ₹{sig['price']}
-Entry: ₹{sig['entry']}
-Stop Loss: ₹{sig['sl']}
-Target: ₹{sig['target']}
+Revenue Growth: {e['revenue_growth']:.1%}
+Profit Growth: {e['profit_growth']:.1%}
+Margin: {e['margin']:.1%}
+
+Price: ₹{t['price']}
+Entry: ₹{t['entry']}
+Stop Loss: ₹{t['sl']}
+Target: ₹{t['target']}
 """
         send_telegram(msg)
 
