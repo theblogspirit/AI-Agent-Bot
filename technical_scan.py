@@ -1,31 +1,40 @@
 import yfinance as yf
 import pandas_ta as ta
+import time
 
 def check_stock(symbol):
     try:
-        # Fetching 1 year of data to ensure EMA 200 is accurate
+        # 1. Download data with a retry/delay to avoid being blocked
         df = yf.download(symbol, period="1y", interval="1d", progress=False)
+        time.sleep(1) # Small pause to be gentle on Yahoo's servers
         
-        # Security check: Ensure we have enough data
-        if df.empty or len(df) < 200:
+        # 2. Safety Check: If data is empty or too short for EMA 200, skip it
+        if df is None or df.empty or len(df) < 200:
+            print(f"Skipping {symbol}: Not enough data (found {len(df) if df is not None else 0} rows)")
             return None
         
-        # Step 1: Calculate Indicators
+        # 3. Calculate Indicators
         df["ema50"] = ta.ema(df["Close"], 50)
         df["ema200"] = ta.ema(df["Close"], 200)
         df["rsi"] = ta.rsi(df["Close"], 14)
         df["vol_sma"] = ta.sma(df["Volume"], 20)
 
-        # Step 2: Extract LATEST values as single numbers (Scalars)
-        # Using .iloc[-1].item() fixes the "Ambiguous Series" error
-        price = float(df["Close"].iloc[-1].item())
-        ema50 = float(df["ema50"].iloc[-1].item())
-        ema200 = float(df["ema200"].iloc[-1].item())
-        rsi = float(df["rsi"].iloc[-1].item())
-        current_vol = float(df["Volume"].iloc[-1].item())
-        avg_vol = float(df["vol_sma"].iloc[-1].item())
+        # 4. Safety Check: Ensure the LATEST row actually has indicator values
+        # Sometimes TA returns NaN for the first few rows
+        last_row = df.iloc[-1]
+        if last_row.isnull().any():
+            print(f"Skipping {symbol}: Latest data contains empty indicator values.")
+            return None
 
-        # Step 3: Rocket Conditions
+        # 5. Extract Values Safely (using .item() or direct indexing)
+        price = float(last_row["Close"])
+        ema50 = float(last_row["ema50"])
+        ema200 = float(last_row["ema200"])
+        rsi = float(last_row["rsi"])
+        current_vol = float(last_row["Volume"])
+        avg_vol = float(last_row["vol_sma"])
+
+        # 6. Your Rocket Logic
         is_uptrend = price > ema50 and ema50 > ema200
         is_momentum = rsi > 55
         is_vol_rocket = current_vol > (avg_vol * 1.5)
@@ -33,8 +42,6 @@ def check_stock(symbol):
         if not (is_uptrend and is_momentum and is_vol_rocket):
             return None
 
-        # Step 4: Calculate Entry/Exit Levels
-        # We use .max() and .min() which return scalars automatically
         recent_high = float(df["High"].rolling(10).max().iloc[-1])
         recent_low = float(df["Low"].rolling(10).min().iloc[-1])
         
@@ -43,12 +50,8 @@ def check_stock(symbol):
         target = round(entry + 2 * (entry - sl), 2)
 
         return {
-            "symbol": symbol, 
-            "price": round(price, 2),
-            "entry": entry, 
-            "sl": sl, 
-            "target": target, 
-            "rsi": round(rsi, 1)
+            "symbol": symbol, "price": round(price, 2),
+            "entry": entry, "sl": sl, "target": target, "rsi": round(rsi, 1)
         }
     except Exception as e:
         print(f"Technical error for {symbol}: {e}")
